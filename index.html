@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> Sidds Dev - Marauder Command Center </title>
+  <title>Sidds Dev - Samsung Edition (v6.0)</title>
   <style>
     /* --- SAMSUNG ONE UI THEME --- */
     :root {
@@ -205,23 +205,24 @@
         
         <button class="btn-fun" style="grid-column: span 2;" onclick="addFunnyNames()">😂 LOAD "DESI" FUNNY LIST</button>
         
-        <button class="btn-danger" style="grid-column: span 2;" onclick="send('stopattack')">🛑 STOP WIFI ATTACKS</button>
+        <button class="btn-danger" style="grid-column: span 2;" onclick="send('stopscan')">🛑 STOP WIFI ATTACKS</button>
       </div>
 
       <div class="section-header">Bluetooth Low Energy (BLE)</div>
       <div class="btn-grid">
         <button onclick="send('ble_scan')">Scan BLE</button>
-        <button onclick="send('ble_stop')">Stop Scan</button>
+        <button onclick="send('stopscan')">Stop Scan</button>
         
-        <button class="btn-highlight" onclick="send('blespam -t samsung')">📱 Samsung Spam</button>
-        <button class="btn-highlight" onclick="send('blespam -t apple')">🍎 Apple Spam</button>
-        <button onclick="send('blespam -t google')">🤖 Android Spam</button>
-        <button onclick="send('blespam -t windows')">💻 Windows Spam</button>
+        <button class="btn-highlight" onclick="sendSequence('blespam -t samsung')">📱 Samsung Spam</button>
+        <button class="btn-highlight" onclick="sendSequence('blespam -t apple')">🍎 Apple Spam</button>
+        <button onclick="sendSequence('blespam -t google')">🤖 Android Spam</button>
+        <button onclick="sendSequence('blespam -t windows')">💻 Windows Spam</button>
+        <button onclick="sendSequence('blespam -t flipper')">🐬 Flipper Spam</button>
         
-        <button onclick="send('spoofat -t random')">🏷️ Spoof Airtags</button>
-        <button class="btn-danger" style="grid-column: span 2;" onclick="send('blespam -t all')">💣 BRUTAL (SPAM ALL)</button>
+        <button onclick="sendSequence('spoofat -t random')">🏷️ Spoof Airtags</button>
+        <button class="btn-danger" style="grid-column: span 2;" onclick="sendSequence('blespam -t all')">💣 BRUTAL (SPAM ALL)</button>
         
-        <button class="btn-danger" style="grid-column: span 2;" onclick="send('stopattack')">🛑 STOP BLE ATTACKS</button>
+        <button class="btn-danger" style="grid-column: span 2;" onclick="send('stopscan')">🛑 STOP BLE ATTACKS</button>
       </div>
 
       <div class="section-header">System</div>
@@ -267,14 +268,30 @@
       }
     }
 
-    // --- SEND COMMAND ---
+    // --- SEND COMMAND (Standard) ---
     async function send(cmd) {
       if (!port || !port.writable) return;
+      // Show command in terminal for verification
       incomingBuffer += `\n[TX] > ${cmd}\n`;
       const encoder = new TextEncoder();
       const writer = port.writable.getWriter();
       await writer.write(encoder.encode(cmd + "\r\n"));
       writer.releaseLock();
+    }
+
+    // --- AUTO-KILL SEQUENCE (The Fix) ---
+    // This stops any running scan before starting the spam
+    async function sendSequence(attackCmd) {
+        incomingBuffer += `\n[SEQ] > Stopping Scan & Starting Attack...\n`;
+        
+        // 1. Send Stop
+        await send('stopscan');
+        
+        // 2. Wait 300ms for radio to clear
+        await new Promise(r => setTimeout(r, 300));
+        
+        // 3. Send Attack
+        await send(attackCmd);
     }
 
     function sendManual() {
@@ -285,7 +302,6 @@
     // --- MACRO: INDIAN FUNNY NAMES ---
     async function addFunnyNames() {
       incomingBuffer += "\n[MACRO] > Loading Funny Indian WiFi Names...\n";
-      
       const names = [
         "Chintu_Ka_Net",
         "Bhabhi_Ki_WiFi",
@@ -298,14 +314,10 @@
         "Password_Mat_Maang",
         "System_Hacked"
       ];
-
-      // We must send these slowly or the ESP32 will choke
       for (const name of names) {
         await send(`ssid -a -n "${name}"`);
-        // Slight delay logic isn't easily possible in async without blocking, 
-        // but Web Serial usually handles the queue well.
+        await new Promise(r => setTimeout(r, 300));
       }
-      
       incomingBuffer += "\n[MACRO] > Names Loaded! Click 'Beacon Spam' to broadcast.\n";
     }
 
